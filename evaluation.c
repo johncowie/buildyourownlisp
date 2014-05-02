@@ -18,7 +18,7 @@ void add_history(char* unused) {}
 #else
 
 #include <editline/readline.h>
-#include <editline/history.h>
+// #include <editline/history.h>
 
 #endif
 
@@ -28,7 +28,16 @@ long eval_op(long x, char* op, long y) {
   if (strcmp(op, "-") == 0) { return x - y; }
   if (strcmp(op, "*") == 0) { return x * y; }
   if (strcmp(op, "/") == 0) { return x / y; }
+  if (strcmp(op, "%") == 0) { return x % y; }
+  if (strcmp(op, "^") == 0) { return pow(x, y);}
+  if (strcmp(op, "min") == 0) { return fmin(x, y);}
+  if (strcmp(op, "max") == 0) { return fmax(x, y);}
   return 0;
+}
+
+long eval_op_single(long x, char* op) {
+  if (strcmp(op, "-") == 0) {return -x;}
+  return x;
 }
 
 long eval(mpc_ast_t* t) {
@@ -42,11 +51,17 @@ long eval(mpc_ast_t* t) {
   /* We store the third child in `x` */
   long x = eval(t->children[2]);
 
+  /* Operate on x with single argument if no other arguments */
+  if(!strstr(t->children[3]->tag, "expr")) {
+    x = eval_op_single(x, op);
+  } else {
+
   /* Iterate the remaining children, combining using our operator */
-  int i = 3;
-  while (strstr(t->children[i]->tag, "expr")) {
-    x = eval_op(x, op, eval(t->children[i]));
-    i++;
+    int i = 3;
+    while (strstr(t->children[i]->tag, "expr")) {
+      x = eval_op(x, op, eval(t->children[i]));
+      i++;
+    }
   }
 
   return x;
@@ -60,11 +75,11 @@ int main(int argc, char** argv) {
   mpc_parser_t* Lispy = mpc_new("lispy");
 
   mpca_lang(MPCA_LANG_DEFAULT,
-    "                                                     \
-      number   : /-?[0-9]+/ ;                             \
-      operator : '+' | '-' | '*' | '/' ;                  \
-      expr     : <number> | '(' <operator> <expr>+ ')' ;  \
-      lispy    : /^/ <operator> <expr>+ /$/ ;             \
+    "                                                                    \
+      number   : /-?[0-9]+/ ;                                            \
+      operator : '+' | '-' | '*' | '/' | '%' | '^' | \"min\" | \"max\";    \
+      expr     : <number> | '(' <operator> <expr>+ ')' ;                 \
+      lispy    : /^/ <operator> <expr>+ /$/ ;                            \
     ",
     Number, Operator, Expr, Lispy);
 
